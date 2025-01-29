@@ -34,6 +34,10 @@ FORMAT = pyaudio.paInt16
 CHANNELS = 1
 RATE = 24000
 
+# Dossier pour les enregistrements
+RECORDINGS_DIR = "recordings"
+os.makedirs(RECORDINGS_DIR, exist_ok=True)
+
 def create_wav_file_object(audio_data):
     """Crée un fichier WAV en mémoire à partir des données audio brutes."""
     wav_file = io.BytesIO()
@@ -45,15 +49,29 @@ def create_wav_file_object(audio_data):
     wav_file.seek(0)
     return wav_file
 
+def save_audio(audio_data, prefix="openai"):
+    """Sauvegarde l'audio dans un fichier WAV."""
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S_%f")
+    filename = f"{RECORDINGS_DIR}/{prefix}_{timestamp}.wav"
+    
+    with wave.open(filename, 'wb') as wf:
+        wf.setnchannels(CHANNELS)
+        wf.setsampwidth(2)  # 16-bit
+        wf.setframerate(RATE)
+        wf.writeframes(audio_data)
+    logging.info(f"Audio sauvegardé: {filename}")
+
 def on_message(ws, message):
     try:
         data = json.loads(message)
         
         if data["type"] == "response.audio.delta":
-            # Attend que l'audio précédent soit fini
-            pygame.mixer.stop()
-            
+            # Sauvegarde l'audio d'OpenAI
             audio_data = base64.b64decode(data["delta"])
+            save_audio(audio_data, "openai")
+            
+            # Joue l'audio
+            pygame.mixer.stop()
             wav_file = create_wav_file_object(audio_data)
             sound = pygame.mixer.Sound(wav_file)
             sound.play()
@@ -99,6 +117,9 @@ def on_open(ws):
         try:
             while ws.sock and ws.sock.connected:
                 data = stream.read(CHUNK, exception_on_overflow=False)
+                # Sauvegarde l'audio de l'utilisateur
+                save_audio(data, "user")
+                
                 ws.send(json.dumps({
                     "type": "input_audio_buffer.append",
                     "audio": base64.b64encode(data).decode('utf-8')
