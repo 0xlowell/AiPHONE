@@ -22,7 +22,7 @@ def signal_handler(sig, frame, realtime_instance):
 
 def main():
     api_key = os.getenv('OPENAI_API_KEY')
-    ws_url = 'wss://api.openai.com/v1/realtime?model=gpt-4o-realtime-preview-2024-10-01'
+    ws_url = 'wss://api.openai.com/v1/realtime?model=gpt-4o-mini-realtime-preview'
 
     if not api_key:
         logging.error('OPENAI_API_KEY not found in environment variables!')
